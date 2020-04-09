@@ -328,12 +328,39 @@ person.dog.age=2
     person.dog.age=15
     ```
 
-## 5 Profile
+## 5 Profile切换
 - Profile是Spring对不同环境提供不同配置功能的支持，可以通过激活、指定参数等方式快速切换环境
-- 多profile文件名形式
-    - 格式：application-{anyword}.properties/yml
-    - 例如：application-dev.properties、application-prod.properties
+- 我们在主配置文件编写的时候，文件名可以是 application-{profile}.properties/yml
+- 默认使用application.properties的配置；
+- 激活某个环境配置文件：
+    - 方法一：在Spring主配置文件`application.properties`中增加 `spring.profiles.active = {profilename}`，表示使用application-{profilename}.properties/yml
+    - 方法二：命令行，`java -jar spring-boot-02-config-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev`
+    - 方式三：虚拟机参数`VM options`，`-Dspring.profiles.active=dev`
+
+### 5.1 多profile文件名形式
+- 格式：application-{anyword}.properties/yml
+- 例如：application-dev.properties（开发环境）、application-prod.properties（生产环境）...
     
+### 5.2 yml支持多文档块方式
+- 在yml文件中使用`---`划分多个文档快
+    ```yaml
+    server:
+      port: 8081
+    spring:
+      profiles:
+        active: prod # 指定激活哪一个文档快
+    ---
+    server:
+      port: 8083
+    spring:
+      profiles: dev
+    ---
+    server:
+      port: 8084
+    spring:
+      profiles: prod  #指定属于哪个环境
+    ```
+
 
 
 
