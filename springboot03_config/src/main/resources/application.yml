@@ -1,0 +1,16 @@
+server:
+  port: 8081
+
+#person:
+#  lastName: 里斯
+#  age: 18
+#  boss: false
+#  bitrh: 2017/12/12
+#  maps: {k1:v1, k2:12}
+#  lists:
+#    - lisi
+#    - zhao
+#    - wang
+#  dog:
+#    name: wangwang
+#    age: 2
