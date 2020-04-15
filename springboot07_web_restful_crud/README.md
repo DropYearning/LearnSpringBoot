@@ -491,6 +491,7 @@ public class ThymeleafProperties {
 | 删除 | deleteEmp?id=1            | emp/{id}---DELETE |
 
 - 需求的请求架构
+
 | 实验功能                             | 请求URI | 请求方式 |
 | ------------------------------------ | ------- | -------- |
 | 查询所有员工                         | emps    | GET      |
