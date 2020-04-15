@@ -488,6 +488,7 @@ public class ThymeleafProperties {
     | 添加 | addEmp?xxx                | emp---POST        |
     | 修改 | updateEmp?id=xxx&xxx=xx   | emp/{id}---PUT    |
     | 删除 | deleteEmp?id=1            | emp/{id}---DELETE |
+
 - 需求的请求架构
     | 实验功能                             | 请求URI | 请求方式 |
     | ------------------------------------ | ------- | -------- |
@@ -498,6 +499,7 @@ public class ThymeleafProperties {
     | 来到修改页面（查出员工进行信息回显） | emp/1   | GET      |
     | 修改员工                             | emp     | PUT      |
     | 删除员工                             | emp/1   | DELETE   |
+
 
 
 
