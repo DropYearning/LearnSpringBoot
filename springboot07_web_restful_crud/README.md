@@ -203,4 +203,206 @@ public class ThymeleafProperties {
     - Special tokens:
         - No-Operation: _（三元运算符没有操作）
 
+## 4 SpringMVC自动配置原理
+
+### 4.1 SpringBoot对SpringMVC的默认配置
+- Spring Boot 自动配置好了SpringMVC，以下是SpringBoot对SpringMVC的默认配置：
+  * Inclusion of `ContentNegotiatingViewResolver` and `BeanNameViewResolver` beans.
+        - 该项配置了视图解析器（ViewResolver），根据方法的return值，得到视图对象View（例如jsp等），视图对象决定如何去渲染
+        - ContentNegotiatingViewResolver：用来组合组合所有的视图解析器
+        - 如何添加自定义视图解析器？——在自定义视图解析器类上添加@Bean注解，ContentNegotiatingViewResolver会自动的将其组合进来
+            ```java
+            // 尝试自己给容器中添加一个视图解析器
+                @Bean
+                public ViewResolver myViewResolver(){
+                    return new MyViewResolver();
+                }
+            
+                private static class MyViewResolver implements  ViewResolver{
+            
+                    @Override
+                    public View resolveViewName(String s, Locale locale) throws Exception {
+                        return null;
+                    }
+                }
+            ```
+    * Support for serving static resources, including support for WebJars (see below)： 提供静态资源，包括对WebJars的支持
+    * Static `index.html` support：静态首页访问
+    * Custom `Favicon` support (see below)：自定义图标
+    * Automatic registration of `Converter`, `GenericConverter`, `Formatter` beans.
+        - Converter：转换器，供类型转换用
+        - Formatter：格式化器（比如把"2017-11-11"转换成Date类型）
+            ```java
+            //在文件中配置日期格式化的规则
+            @Bean
+            @ConditionalOnProperty(prefix = "spring.mvc", name = "date-format")
+            public Formatter<Date> dateFormatter() {
+                return new DateFormatter(this.mvcProperties.getDateFormat());//日期格式化组件
+            }
+            ```
+        - 如何添加自定义格式化器转换器？——只需要在自定义格式化转换器上添加@Bean放在容器中即可
+    * Support for `HttpMessageConverters` (see below)
+        - HttpMessageConverters：SpringMVC中用来转换HTTP请求和响应的。例如User类和JSON之间的转换
+        - 如果要添加自定义的消息转换器———
+    * Automatic registration of `MessageCodesResolver` (see below):定义错误代码生成规则
+    * Automatic use of a `ConfigurableWebBindingInitializer` bean (see below).
+## 4.2 扩展SpringMVC 
+
+> If you want to keep Spring Boot MVC features, and you just want to add additional [MVC configuration](https://docs.spring.io/spring/docs/4.3.14.RELEASE/spring-framework-reference/htmlsingle#mvc) (interceptors, formatters, view controllers etc.) you can add your own `@Configuration` class of type `WebMvcConfigurerAdapter`, but **without** `@EnableWebMvc`. If you wish to provide custom instances of `RequestMappingHandlerMapping`, `RequestMappingHandlerAdapter` or `ExceptionHandlerExceptionResolver` you can declare a `WebMvcRegistrationsAdapter` instance providing such components.If you want to take complete control of Spring MVC, you can add your own `@Configuration` annotated with `@EnableWebMvc`.
+    
+- 编写一个配置类（@Configuration），实现WebMvcConfigurer接口；不能标注@EnableWebMvc
+    - 例如添加一个视图解析的映射：
+        ```java
+        // 添加自定义配置类，通过实现WebMvcConfigurer接口可以来扩展SpringMVC的功能
+        @Configuration
+        public class MyMvcConfig implements WebMvcConfigurer {
+            //  添加一个视图解析设置 /test -> success.html
+            @Override
+            public void addViewControllers(ViewControllerRegistry registry) {
+                registry.addViewController("/myview").setViewName("success1");
+            }
+        }
+        ```
+- 原理：
+    1) WebMvcAutoConfiguration是SpringMVC的自动配置类
+​	2) 在做其他自动配置时会导入；@Import(**EnableWebMvcConfiguration**.class)
+        ```java
+        @Configuration
+        public static class EnableWebMvcConfiguration extends DelegatingWebMvcConfiguration {
+        private final WebMvcConfigurerComposite configurers = new WebMvcConfigurerComposite();
+        //从容器中获取所有的WebMvcConfigurer
+        @Autowired(required = false)
+        public void setConfigurers(List<WebMvcConfigurer> configurers) {
+          if (!CollectionUtils.isEmpty(configurers)) {
+              this.configurers.addWebMvcConfigurers(configurers);
+                //一个参考实现；将所有的WebMvcConfigurer相关配置都来一起调用；  
+                @Override
+             // public void addViewControllers(ViewControllerRegistry registry) {
+              //    for (WebMvcConfigurer delegate : this.delegates) {
+               //       delegate.addViewControllers(registry);
+               //   }
+              }
+          }
+        }
+        ```
+    3） 容器中所有的WebMvcConfigurer都会一起起作用；
+​	4） 我们的配置类也会被调用；
+​- 效果：SpringMVC的自动配置和我们的扩展配置都会起作用；
+
+### 4.3 全面接管对SpringMVC的配置
+- SpringBoot对SpringMVC的自动配置不需要了，所有都是我们自己配置；所有的SpringMVC的自动配置都失效了（全手动配置）
+- **我们需要在配置类中添加@EnableWebMvc即可全面接管对SpringMVC的配置**
+- 为什么@EnableWebMvc自动配置就失效了？
+    - @EnableWebMvc的核心：`@Import(DelegatingWebMvcConfiguration.class)`
+    - DelegatingWebMvcConfiguration 继承自 WebMvcConfigurationSupport（用于SpringMVC的自动配置）
+    - WebMvcConfigurationSupport中标注@Conditional**OnMissing**Bean(WebMvcConfigurationSupport.class)：容器中**没有**这个组件的时候，这个自动配置类才生效 
+    - @EnableWebMvc将WebMvcConfigurationSupport组件导入进来；
+- WebMvcConfigurationSupport能自动导入的设置都是SpringMVC最基本的功能，对于高级的拦截器等都需要自行配置
+
+    
+### 4.4 SpringBoot的默认配置流程
+1. SpringBoot在自动配置很多组件的时候，先看容器中有没有用户自己配置的（@Bean、@Component...）如果有就用用户配置的，如果没有，才自动配置；如果有些组件可以有多个（例如ViewResolver），SpringBoot会将用户配置的和自己默认的组合起来；
+2. 在SpringBoot中会有非常多的xxxConfigurer帮助我们进行扩展配置
+3. 在SpringBoot中会有很多的xxxCustomizer帮助我们进行定制配置
+
+## 5 Restful CRUD
+### 5.1 引入静态资源
+- 在[WebJars - Web Libraries in Jars](https://www.webjars.org/)中找到BootStrap的Maven依赖并且引入
+- 修改html页面文件中引用BootStrap的位置：
+    ```html
+    <!-- Bootstrap core CSS -->
+    <link th:href="@{/webjars/bootstrap/4.4.1-1/css/bootstrap.css}" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link th:href="@{/asserts/css/signin.css}" rel="stylesheet">
+    ```
+- 使用`th:href`导入静态资源的好处：当将来在SpringBoot配置文件中修改`server.context-path=crud`之后，thymeleaf会自动为我们在静态资源的url前面加上当前的server.context-path。
+    ![5MJJ0Vq](https://i.imgur.com/5MJJ0Vq.png)
+
+## 5.2 实现登陆页面的国际化效果（切换界面语言）
+- 原来SpringMVC国际化的步骤：
+    1. 编写国际化配置文件
+    2. 使用ResourceBundleMessageSource管理国际化资源文件
+    3. 在页面使用fmt:message来取出国际化的内容
+- 使用SpringBoot的步骤：
+    1. 编写国际化配置文件，抽取页面需要显示的国际化消息：在/resources目录下新建i18n文件夹，添加配置文件`login.properties`来为登陆页面做国际化配置。根据需要配置的语言数目新建相应个数的.properties文件。
+        ![08kx0it](https://i.imgur.com/08kx0it.png)
+    2. SpringBoot中有MessageSourceAutoConfiguration来帮我们自动管理国际化资源文件
+        ```java
+        @ConfigurationProperties(prefix = "spring.messages")
+        public class MessageSourceAutoConfiguration {
+        
+        /**
+         * Comma-separated list of basenames (essentially a fully-qualified classpath
+         * location), each following the ResourceBundle convention with relaxed support for
+         * slash based locations. If it doesn't contain a package qualifier (such as
+         * "org.mypackage"), it will be resolved from the classpath root.
+         */
+        private String basename = "messages";  
+        //我们的配置文件可以直接放在类路径下叫messages.properties；
+        
+        @Bean
+        public MessageSource messageSource() {
+            ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+            if (StringUtils.hasText(this.basename)) {
+                //设置国际化资源文件的基础名（去掉语言国家代码的）
+                messageSource.setBasenames(StringUtils.commaDelimitedListToStringArray(
+                        StringUtils.trimAllWhitespace(this.basename)));
+            }
+            if (this.encoding != null) {
+                messageSource.setDefaultEncoding(this.encoding.name());
+            }
+            messageSource.setFallbackToSystemLocale(this.fallbackToSystemLocale);
+            messageSource.setCacheSeconds(this.cacheSeconds);
+            messageSource.setAlwaysUseMessageFormat(this.alwaysUseMessageFormat);
+            return messageSource;
+        }
+        ```
+    3. 在SprintBoot配置文件中配置国家化包名`spring.messages.basename=i18n.login`
+    4. 在html页面获取国际化的值：thymeleaf-Message使用`#{}`获取
+    5. 配置登陆页下方的语言选择按钮生效:SpringBoot通过LocalResolver获取区域对象解析,默认的就是根据请求头带来的区域信息获取Locale进行国际化。因此我们要自己实现一个自定义LocalResolver，并将其交给SpringBoot管理（在配置类中注入）
+        ```java
+           /**
+            * 可以在链接上携带国际化的区域信息
+            */
+           public class MyLocaleResolver implements LocaleResolver {
+           
+               // 重写解析区域信息的方法
+               @Override
+               public Locale resolveLocale(HttpServletRequest httpServletRequest) {
+                   String l = httpServletRequest.getParameter("l");
+                   Locale locale = Locale.getDefault();
+                   if(!StringUtils.isEmpty(l)){
+                       String[] split = l.split("_");
+                       locale = new Locale(split[0], split[1]);
+                   }
+                   return locale;
+               }
+           
+               @Override
+               public void setLocale(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Locale locale) {
+           
+               }
+           }
+        ```
+   6. 在SpringBoot配置类`MyMvcConfig`中将自定义的区域解析器注入容器：
+        ```java
+        // 添加自定义的区域信息解析器(方法名必须为localeResolver)
+        @Bean
+        public LocaleResolver localeResolver(){
+            return new MyLocaleResolver();
+        }
+        ```
+    7. 之后就可以在页面中使用按钮切换语言了～
+        ![9uGcUih](https://i.imgur.com/9uGcUih.png)
+
+
+
+
+
+
+
+
+
+
+
 

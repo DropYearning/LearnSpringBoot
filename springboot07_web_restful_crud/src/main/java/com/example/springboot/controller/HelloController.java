@@ -26,4 +26,9 @@ public class HelloController {
         // 将对/success的url路径解析到：class:path:/templates/success1.html文件
         return "success1";
     }
+
+    @RequestMapping({"/", "/login.html"})
+    public String index(){
+        return "login";
+    }
 }
