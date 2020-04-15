@@ -318,7 +318,7 @@ public class ThymeleafProperties {
 - 使用`th:href`导入静态资源的好处：当将来在SpringBoot配置文件中修改`server.context-path=crud`之后，thymeleaf会自动为我们在静态资源的url前面加上当前的server.context-path。
     ![5MJJ0Vq](https://i.imgur.com/5MJJ0Vq.png)
 
-## 5.2 实现登陆页面的国际化效果（切换界面语言）
+### 5.2 实现登陆页面的国际化效果（切换界面语言）
 - 原来SpringMVC国际化的步骤：
     1. 编写国际化配置文件
     2. 使用ResourceBundleMessageSource管理国际化资源文件
@@ -395,9 +395,109 @@ public class ThymeleafProperties {
     7. 之后就可以在页面中使用按钮切换语言了～
         ![9uGcUih](https://i.imgur.com/9uGcUih.png)
 
+### 5.3 配置拦截器实现用户登陆
+> 开发环境应该禁用模板引擎的缓存功能：在SpringBoot配置文件中修改如下`spring.thymeleaf.cache=false`
 
+> 修改完HTML页面之后可以按 cmd+F9 来让重新编译 
 
+> 要保证用户登陆请求发送之后跳转到的页面css样式不消失，需要在html页面中使用thymeleaf的th方式来设置相对路径 `th:href="@{/resourcesPath}"`
 
+- 1、编写控制器：模拟登陆，不查询数据库，只校验固定的默认用户名和密码
+    - 注意：登陆成功之后，为了防止表单重复提交，可以重定向到主页
+    - 可以利用session存入用户登陆的凭证
+    ```java
+    /**
+     * 处理登陆请求的控制器
+     */
+    @Controller
+    public class LoginController {
+        @PostMapping("/user/login")
+        //@RequestMapping(value = "/user/login", method = RequestMethod.POST)
+        public String login(@RequestParam("username") String username,
+                            @RequestParam("password") String password,
+                            Map<String,Object> map, HttpSession session){
+            // 模拟用户校验
+            if("admin".equals(username) && "123456".equals(password)){
+                // 登陆成功后将用户名存入session
+                session.setAttribute("loginUser", username);
+                // 登陆成功之后，为了防止表单重复提交，可以重定向到主页
+                return "redirect:/main.html";
+            }else {
+                // 登陆失败
+                map.put("msg", "用户名密码错误");
+                return "login";
+            }
+        }
+    }
+    ```
+
+- 2、实现自定义拦截器实现登陆检查
+    ```java
+    /**
+     * 用于检查登陆状态的拦截器，实现登陆检查
+     */
+    public class LoginHandlerInterceptor implements HandlerInterceptor {
+    
+        // 登陆前检查
+        @Override
+        public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+            Object user = request.getSession().getAttribute("loginUser");
+            if (user == null){
+                // 未登陆，返回登陆页面
+                request.setAttribute("msg", "没有权限，请先登陆");
+                request.getRequestDispatcher("/index.html").forward(request, response);
+                return false;
+            }else{
+                // 已登陆，放行
+                return true;
+            }
+        }
+    
+    }
+    
+    ```
+- 3、在SpringBoot配置类`MyMvcConfig`中添加拦截器的相关配置
+    ```java
+    // 在WebMvcConfigurer中配置的组件会和SpringBoot的默认自动配置一起生效
+    @Bean
+    public WebMvcConfigurer webMvcConfigurer(){
+        // 匿名类
+        WebMvcConfigurer wc = new WebMvcConfigurer() {
+            // 注册拦截器
+            @Override
+            public void addInterceptors(InterceptorRegistry registry) {
+                // "/**"：拦截任意多层路径下的任意请求
+                // 同时要排除对静态资源的拦截  "/asserts/**" ,"/webjars/**"
+                registry.addInterceptor(new LoginHandlerInterceptor()).addPathPatterns("/**")
+                        .excludePathPatterns("/index.html", "/", "/user/login", "/asserts/**" ,"/webjars/**");
+            }
+
+        };
+        return wc;
+        }
+    ```
+
+>  /webjars下静态资源的排除不再需要手动配置，SpringBoot会自动排除。
+
+## 5.4 实现CRUD查询并显示员工列表
+- 要求Restful CRUD: CRUD满足Rest风格
+    - URI：/资源名称/资源标识, 以HTTP请求方式区分对资源CRUD操作
+    |  操作 | 普通CRUD（uri来区分操作） | RestfulCRUD       |
+    | ---- | ------------------------- | ----------------- |
+    | 查询 | getEmp                    | emp---GET         |
+    | 添加 | addEmp?xxx                | emp---POST        |
+    | 修改 | updateEmp?id=xxx&xxx=xx   | emp/{id}---PUT    |
+    | 删除 | deleteEmp?id=1            | emp/{id}---DELETE |
+- 需求的请求架构
+    | 实验功能                             | 请求URI | 请求方式 |
+    | ------------------------------------ | ------- | -------- |
+    | 查询所有员工                         | emps    | GET      |
+    | 查询某个员工(来到修改页面)           | emp/1   | GET      |
+    | 来到添加页面                         | emp     | GET      |
+    | 添加员工                             | emp     | POST     |
+    | 来到修改页面（查出员工进行信息回显） | emp/1   | GET      |
+    | 修改员工                             | emp     | PUT      |
+    | 删除员工                             | emp/1   | DELETE   |
 
 
 
