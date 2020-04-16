@@ -479,7 +479,7 @@ public class ThymeleafProperties {
 
 >  /webjars下静态资源的排除不再需要手动配置，SpringBoot会自动排除。
 
-## 5.4 实现CRUD查询并显示员工列表
+### 5.4 Restful CRUD需求分析
 - 要求Restful CRUD: CRUD满足Rest风格
     - URI：/资源名称/资源标识, 以HTTP请求方式区分对资源CRUD操作
     
@@ -501,6 +501,130 @@ public class ThymeleafProperties {
 | 来到修改页面（查出员工进行信息回显） | emp/1   | GET      |
 | 修改员工                             | emp     | PUT      |
 | 删除员工                             | emp/1   | DELETE   |
+
+### 5.5 员工列表页面：抽取页面公共的样式片段
+- 引入list.html，修改静态资源的引入url
+- 抽取公共样式片段的方法一：使用Thymeleaf中抽取公共片段(th:fragment法) 见"Thymeleaf中抽取公共片段"
+- 抽取公共样式片段的方法二：新写一个bar.html
+        ```html
+        <!--引入公共的部分1：topbar-->
+		<div th:replace="commons/bar::topbar"></div>
+        ```
+- 设置菜单栏对应选项高亮：
+    - 使用Thymeleaf的Parameterizable fragment signatures
+    - 在bar.html中
+- 在body内编写显示用户信息的表格
+- 格式化显示的日期
+
+### 5.6 员工添加页面
+- 在显示添加页面之前需要先查出所有的部门，供添加页面显示
+- 添加项目最容易的引起的问题就是提交的数据格式不对（例如日期的格式不对）
+    - 日期的格式化；SpringMVC将页面提交的值需要转换为指定的类型; 
+    - 默认日期是按照`dd/mm/dd`的方式；
+    - 可以在SpringBoot的主配置文件`application.properties`中
+
+> 由于此时并没有连接数据库，因此重启项目后新添加的员工信息就会消失
+
+
+### 5.7 员工信息修改页面
+- 复用员工信息修改页面add.html，在thymeleaf语句中使用判断符来检查当前是要完成修改还是添加功能，`<input name="lastName" type="text" class="form-control" placeholder="zhangsan" th:value="${emp!=null}?${emp.lastName}">`
+- 发送put请求修改员工数据
+    - 1、SpringMVC中配置HiddenHttpMethodFilter;（`spring.mvc.hiddenmethod.filter.enabled=true`）
+    - 2、页面创建一个post表单
+    - 3、创建一个input项，name="_method";值就是我们指定的请求方式
+
+- [springboot表单添加隐藏域name=_method后依旧无法转化put和delete，无法被相应的控制器捕获，出现Request method POST not supported错误_Java_Sirius_lin的博客-CSDN博客](https://blog.csdn.net/Sirius_lin/article/details/102909593)
+
+### 5.8 删除员工操作
+- 需要用DELETE方式发送请求，因此需要使用表单
+- 方法一：使用表单删除
+    ```html
+    <td>
+        <a class="btn btn-sm btn-primary" th:href="@{emp/}+${emp.id}">编辑</a>
+        <form th:action="@{/emp/}+${emp.id}" method="post">
+            <input type="hidden" name="_method" value="delete"/>
+            <button  class="btn btn-sm btn-danger">删除</button>
+        </form>
+    </td>
+    ```
+- 方法二：使用js删除: 见list.html
+  
+
+### 5.9 Thymeleaf中抽取公共片段
+- 1、抽取公共片段
+    ```html
+    <div th:fragment="copy">
+      & 2011 The Good Thymes Virtual Grocery
+    </div>
+    ```
+- 2、引入公共片段
+    ```html
+    <div th:insert="~{footer :: copy}"></div>
+    ```
+    - ~{templatename::selector}：模板名::选择器
+    - ~{templatename::fragmentname}:模板名::片段名  
+    - 模板名：会使用thymeleaf的前后缀配置规则进行解析（例如在dashboard.html中定义的公共片段，直接使用`dashboard::topbar`引入即可）
+   
+- 3、默认效果：
+    - insert的公共片段在div标签中
+    - 如果使用th:insert等属性进行引入，可以不用写~{}：
+    - 行内写法可以加上：[[~{}]];[(~{})]；
+
+- 三种引入公共片段的th属性：
+    **th:insert**：将公共片段整个插入到声明引入的元素中
+    **th:replace**：将声明引入的元素替换为公共片段
+    **th:include**：将被引入的片段的内部内容包含进这个标签中    
+        ```html
+        <footer th:fragment="copy">
+        &copy; 2011 The Good Thymes Virtual Grocery
+        </footer>
+        
+        <!--3种引入方式-->
+        <div th:insert="footer :: copy"></div>
+        <div th:replace="footer :: copy"></div>
+        <div th:include="footer :: copy"></div>
+        
+        <!--3种效果-->
+        <div>
+            <footer>
+            &copy; 2011 The Good Thymes Virtual Grocery
+            </footer>
+        </div>
+        
+        <footer>
+        &copy; 2011 The Good Thymes Virtual Grocery
+        </footer>
+        
+        <div>
+        &copy; 2011 The Good Thymes Virtual Grocery
+        </div>
+        ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
