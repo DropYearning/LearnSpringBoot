@@ -573,32 +573,34 @@ public class ThymeleafProperties {
 - 三种引入公共片段的th属性：
     **th:insert**：将公共片段整个插入到声明引入的元素中
     **th:replace**：将声明引入的元素替换为公共片段
-    **th:include**：将被引入的片段的内部内容包含进这个标签中    
-        ```html
-        <footer th:fragment="copy">
-        &copy; 2011 The Good Thymes Virtual Grocery
-        </footer>
-        
-        <!--3种引入方式-->
-        <div th:insert="footer :: copy"></div>
-        <div th:replace="footer :: copy"></div>
-        <div th:include="footer :: copy"></div>
-        
-        <!--3种效果-->
-        <div>
-            <footer>
-            &copy; 2011 The Good Thymes Virtual Grocery
-            </footer>
-        </div>
-        
-        <footer>
-        &copy; 2011 The Good Thymes Virtual Grocery
-        </footer>
-        
-        <div>
-        &copy; 2011 The Good Thymes Virtual Grocery
-        </div>
-        ```
+    **th:include**：将被引入的片段的内部内容包含进这个标签中   
+     
+```html
+<!--要被公共使用的HTML片段-->
+<footer th:fragment="copy">
+&copy; 2011 The Good Thymes Virtual Grocery
+</footer>
+
+<!--3种引入方式-->
+<div th:insert="footer :: copy"></div>
+<div th:replace="footer :: copy"></div>
+<div th:include="footer :: copy"></div>
+
+<!--3种效果-->
+<div>
+    <footer>
+    &copy; 2011 The Good Thymes Virtual Grocery
+    </footer>
+</div>
+
+<footer>
+&copy; 2011 The Good Thymes Virtual Grocery
+</footer>
+
+<div>
+&copy; 2011 The Good Thymes Virtual Grocery
+</div>
+```
 
 
 
