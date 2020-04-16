@@ -3,6 +3,9 @@ package com.example.springboot.config;
 import com.example.springboot.component.LoginHandlerInterceptor;
 import com.example.springboot.component.MyLocaleResolver;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
+import org.springframework.boot.web.server.ConfigurableWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.LocaleResolver;
@@ -14,6 +17,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 // 添加自定义配置类，通过实现WebMvcConfigurer接口可以来扩展SpringMVC的功能
 @Configuration
 public class MyMvcConfig implements WebMvcConfigurer {
+
 
     //  添加一个视图解析设置 /url -> xxx(.html)
     @Override

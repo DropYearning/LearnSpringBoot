@@ -730,8 +730,182 @@ public class ThymeleafProperties {
                 return "forward:/error"; //转发到/error
             }
         ```
+## 7 配置嵌入式Servlet容器(配置SpringBoot内置的Tomcat)
+- SpringBoot默认使用Tomcat作为嵌入式的Servlet容器
 
-        
+### 7.1 如何定制和修改Servlet容器的相关配置
+- 方法一：在SpringBoot的主配置文件中修改和server有关的配置（SpringBoot的设置定义类：`ServerProperties`）【也是EmbeddedServletContainerCustomizer】
+- 方法二：在配置类中编写一个返回**EmbeddedServletContainerCustomizer**类的方法（嵌入式的Servlet容器的定制器）来修改Servlet容器的配置
+    ```java
+    // 添加自定义配置类，通过实现WebMvcConfigurer接口可以来扩展SpringMVC的功能
+    @Configuration
+    public class MyMvcConfig implements WebMvcConfigurer {
+        // 定制嵌入式Servlet容器的相关设置
+        @Bean
+        public WebServerFactoryCustomizer webServerFactoryCustomizer(){
+            return new WebServerFactoryCustomizer<ConfigurableWebServerFactory>() {
+                @Override
+                public void customize(ConfigurableWebServerFactory factory) {
+                    factory.setPort(8080); // 例如修改端口
+                }
+            };
+        }
+      }
+    ```
+- 这两种方法本质上是一样的
+
+### 7.2 配置嵌入式容器中的Servlet三大组件【Servlet、Filter、Listener】
+- 由于SpringBoot默认是以jar包的方式启动嵌入式的Servlet容器来启动SpringBoot的web应用，因此在/WEB-INF目录下没有web.xml配置文件了，该如何配置Servlet中的三大组件？
+- 在配置类中添加方法返回`ServletRegistrationBean`用于注册Servlet
+    ```java
+    @Configuration
+    public class MyServerConfig {
+        // 注册Servlet
+        @Bean
+        public ServletRegistrationBean servletRegistrationBean(){
+            ServletRegistrationBean<Servlet> registrationBean = new ServletRegistrationBean<>(new MyServlet(), "/myServlet");
+            registrationBean.setLoadOnStartup(1); // 原来在XML中可以设置的项在这里都可以设置
+            return registrationBean;
+        }
+    }
+
+    public class MyServlet  extends HttpServlet {
+        @Override
+        protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+            doPost(req, resp);
+        }
+    
+        @Override
+        protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+            resp.getWriter().write("Hello My Servlet");
+        }
+    }
+    ```
+- 在配置类中添加方法返回`FilterRegistrationBean`用于注册Filter
+    ```java
+    public class MyFilter implements Filter {
+        @Override
+        public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+            System.out.println("MyFilter doFilter()");
+            filterChain.doFilter(servletRequest, servletResponse);
+        }
+    }
+  
+    @Configuration
+    public class MyServerConfig {
+      // 注册Filter
+      @Bean
+      public FilterRegistrationBean filterRegistrationBean(){
+          FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<Filter>();
+          registrationBean.setFilter(new MyFilter());
+          registrationBean.setUrlPatterns(Arrays.asList("/hello", "/myServlet"));
+          return registrationBean;
+      }
+    }
+
+    ```
+- 在配置类中添加方法返回`ServletListenerRegistrationBean`用于注册Listener
+    ```java
+    public class MyListener implements ServletContextListener {
+        @Override
+        public void contextInitialized(ServletContextEvent sce) {
+            System.out.println("contextInitialized..web应用启动了");
+        }
+    
+        @Override
+        public void contextDestroyed(ServletContextEvent sce) {
+            System.out.println("contextDestroyed..web应用销毁了");
+        }
+    }
+      // 自定义配置类
+      @Configuration
+      public class MyServerConfig {
+          // 注册Listener
+          @Bean
+          public ServletListenerRegistrationBean servletListenerRegistrationBean(){
+              ServletListenerRegistrationBean<MyListener> listenerRegistrationBean = new ServletListenerRegistrationBean<>(new MyListener());
+              return listenerRegistrationBean;
+          }
+      }
+    ```
+- 实例：SpringBoot帮我们自动配置SpringMVC的时候，自动的注册SpringMVC的前端控制器DispatcherServlet就是一个很好的例子`DispatcherServletAutoConfiguration`
+
+### 7.3 替换使用其他嵌入式Servlet容器
+- **Servlet容器**主要是JavaWeb应用提供运行时环境，所以也可以称之为JavaWeb应用容器，或者Servlet/JSP容器。Servlet容器主要负责管理Servlet、JSP的生命周期以及它们的共享数据。
+    - 目前最流行的Servlet容器软件包括: Tomcat、Jetty、Jboss等。
+    - ![SpD9FDe](https://i.imgur.com/SpD9FDe.jpg)
+- ![xVU66Rg](https://i.imgur.com/xVU66Rg.png)
+- **Tomcat**（默认使用）：
+    ```xml
+    <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-web</artifactId>
+       引入web模块默认就是使用嵌入式的Tomcat作为Servlet容器；
+    </dependency>
+    ```
+
+- **Jetty** 的依赖（适合开发长连接应用，例如聊天软件）
+    ```xml
+    <!-- 引入web模块 -->
+    <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-web</artifactId>
+       <exclusions>
+          <exclusion>
+             <artifactId>spring-boot-starter-tomcat</artifactId>
+             <groupId>org.springframework.boot</groupId>
+          </exclusion>
+       </exclusions>
+    </dependency>
+    
+    <!--引入其他的Servlet容器-->
+    <dependency>
+       <artifactId>spring-boot-starter-jetty</artifactId>
+       <groupId>org.springframework.boot</groupId>
+    </dependency>
+    ```
+- **Undertow** 的依赖（Undertow不支持JSP，轻量）
+    ```xml
+    <!-- 引入web模块 -->
+    <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-web</artifactId>
+       <exclusions>
+          <exclusion>
+             <artifactId>spring-boot-starter-tomcat</artifactId>
+             <groupId>org.springframework.boot</groupId>
+          </exclusion>
+       </exclusions>
+    </dependency>
+    
+    <!--引入其他的Servlet容器-->
+    <dependency>
+       <artifactId>spring-boot-starter-undertow</artifactId>
+       <groupId>org.springframework.boot</groupId>
+    </dependency>
+    ```
+### 7.4 替换Servlet容器背后的自动配置原理
+
+
+  
+
+## 参考资料
+- [Web容器、Servlet容器、Spring容器、SpringMVC容器之间的关系 - Jie~ - 博客园](https://www.cnblogs.com/jieerma666/p/10805966.html)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
