@@ -40,8 +40,8 @@ public class MyMvcConfig implements WebMvcConfigurer {
             public void addInterceptors(InterceptorRegistry registry) {
                 // "/**"：拦截任意多层路径下的任意请求
                 // 同时要排除对静态资源的拦截  "/asserts/**" ,"/webjars/**"
-                registry.addInterceptor(new LoginHandlerInterceptor()).addPathPatterns("/**")
-                        .excludePathPatterns("/index.html", "/", "/user/login", "/statics/asserts/**" ,"/webjars/**","/resources/**");
+                //registry.addInterceptor(new LoginHandlerInterceptor()).addPathPatterns("/**")
+                //        .excludePathPatterns("/index.html", "/", "/user/login", "/statics/asserts/**" ,"/webjars/**","/resources/**");
             }
 
         };

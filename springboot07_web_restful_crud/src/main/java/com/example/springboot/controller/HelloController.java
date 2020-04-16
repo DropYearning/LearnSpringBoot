@@ -1,7 +1,9 @@
 package com.example.springboot.controller;
 
+import com.example.springboot.eexception.UserNotExistException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.Arrays;
@@ -12,7 +14,10 @@ public class HelloController {
 
     @ResponseBody
     @RequestMapping("/hello")
-    public String hello(){
+    public String hello(@RequestParam("user") String user){
+        if (user.equals("aaa")){ // 模拟自定义异常的抛出
+            throw new UserNotExistException();
+        }
         return "Hello World!";
     }
 

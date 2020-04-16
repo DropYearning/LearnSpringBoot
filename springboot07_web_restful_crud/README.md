@@ -602,9 +602,136 @@ public class ThymeleafProperties {
 </div>
 ```
 
+## 6 SpringBoot错误处理机制
+- 若使用浏览器发送请求默认错误页面：
+    - ![gWLVqnv](https://i.imgur.com/gWLVqnv.png)
+	- ![https://i.imgur.com/WWhevlr.png](https://i.imgur.com/WWhevlr.png)
+- 若使用Postman请求，响应的错误是JSON数据
+    - ![FHBAEhg](https://i.imgur.com/FHBAEhg.png)
+	- ![https://i.imgur.com/2WCKKZ9.png](https://i.imgur.com/2WCKKZ9.png)
+- SpringBoot错误配置原理可以参照`ErrorMvcAutoConfiguration`
+	- 该类会给容器中添加组件`DefaultErrorAttributes`
+	- BasicErrorController：处理默认/error请求的控制器
+	- ErrorPageCustomizer：系统出现错误之后来到error请求进行处理，
+	- DefaultErrorViewResolver：默认的错误页面视图解析器
+		- 1、默认SpringBoot会去找到 `error/ 状态码`组合起来的视图地址，由模板引擎解析
+		- 2、如果模板引擎可用的情况下返回到errorViewName指定的视图地址
+		- 3、如果模板引擎不可用，就在静态资源文件夹下找errorViewName对应的页面  。相当于去找`error/404.html`
+- 步骤：一但系统出现4xx或者5xx之类的错误；ErrorPageCustomizer就会生效（定制错误的响应规则），就会发送/error请求；该请求就会被控制器BasicErrorController处理；
+
+### 6.1 如何定制错误响应页面？
+- 1、有模板引擎的情况下自动会去解析`error/状态码`，因此可以将错误页面命名为`错误状态码.html`放在模板引擎文件夹里面的/error文件夹下，发生此状态码的错误就会来到对应的页面
+    - 我们可以使用`4xx`和`5xx`作为错误页面的文件名来**通配**这种类型的所有错误。SpringBoot会以精确优先（优先寻找精确的状态码.html），若找不到就调用4xx和5xx
+    - 跳转错误页面时会返回 ModelAndView，会携带以下信息：
+        - `timestamp`：时间戳
+        ​- `status`：状态码
+        - `error`：错误提示
+        - `exception`：异常对象
+        - `message`：异常消息
+        ​- `errors`：JSR303数据校验的错误都在这里
+    > 注意，获取自定义异常信息需要在配置文件中添加`server.error.include-exception=true`
+- 2、若没有模板引擎（模板引擎找不到这个错误页面），会静态资源文件夹下找`错误状态码.html`，但是由于没有模板引擎，无法获取和解析ModelAndView中的信息
+- 3、若以上都没有或者都没有找到对应的页面，默认来到SpringBoot默认的错误提示页面：
+    - ![https://i.imgur.com/WWhevlr.png](https://i.imgur.com/WWhevlr.png)
 
 
+### 6.2 如何定制错误返回的JSON数据？
+- 假设抛出的异常如下：
+    ```java
+        @ResponseBody
+        @RequestMapping("/hello")
+        public String hello(@RequestParam("user") String user){
+            if (user.equals("aaa")){ // 模拟自定义异常的抛出
+                throw new UserNotExistException(); // UserNotExistException是自定义的异常类
+            }
+            return "Hello World!";
+        }
+    ```
+- 方法一：利用`ExceptionHandler`继承实现自定义的异常处理器，并返回一个Map<String,Object>，SpringBoot会自动解析为JSON返回：
+    - 这种方法无论是浏览器还是客户端返回的都是JSON格式数据
+    - ![e53A93L](https://i.imgur.com/e53A93L.png)
+    ```java
+    /**
+     * 自定义异常，用户不存在
+     */
+    public class UserNotExistException extends RuntimeException {
+        public UserNotExistException(){
+            super("用户不存在");
+        }
+    }
+    ```
+  
+    ```html
+    @ControllerAdvice
+    public class MyExceptionHandler  {
+        @ResponseBody
+        @ExceptionHandler(UserNotExistException.class)
+        public Map<String, Object> handleException(Exception e){
+            // 响应自己的JSON数据
+            Map<String, Object> map = new HashMap<>();
+            map.put("code", "user.notexist");
+            map.put("message", e.getMessage());
+            return map;
+        }
+    }
+    ```
+- 方法二：转发到/error实现自适应
+    - ![BiWO7uU](https://i.imgur.com/BiWO7uU.png)
+    - 客户端返回JSON，浏览器返回错误页面
+    - **一定要传入自定义的错误状态码，否则一定是200**，`request.setAttribute("javax.servlet.error.status_code", 404);`
+    ```java
+       // 方法二：在前面的基础上实现自适应
+       @ExceptionHandler(UserNotExistException.class)
+       public String handleException(Exception e, HttpServletRequest request){
+           // 响应自己的JSON数据
+           Map<String, Object> map = new HashMap<>();
+           // 传入自定义的错误状态码，否则一定是200
+           request.setAttribute("javax.servlet.error.status_code", 404);
+           map.put("code", "user.notexist");
+           map.put("message", e.getMessage());
+           return "forward:/error"; //转发到/error
+       }
+    ```
+- 方法三：不仅实现自适应，还在JSON中返回自定义数据
+    - 出现错误以后，会来到/error请求，会被BasicErrorController处理，响应出去可以获取的数据是由getErrorAttributes得到的（是AbstractErrorController（ErrorController）规定的方法）；
+    - ​（第一种思路）完全来编写一个ErrorController的实现类【或者是编写AbstractErrorController的子类】，放在容器中；
+    - （第二种思路）页面上能用的数据，或者是json返回能用的数据都是通过errorAttributes.getErrorAttributes得到；容器中DefaultErrorAttributes.getErrorAttributes()是默认定义要输出的数据的方法
+        - 效果：![draxc2K](https://i.imgur.com/draxc2K.png)
+        ```java
+        // 在容器中加入我们自定义的错误属性类
+        @Component
+        public class MyErrorAttributes extends DefaultErrorAttributes {
+        
+            // 返回的errorAttributes就是页面和JSON能获取到所有字段
+            @Override
+            public Map<String, Object> getErrorAttributes(WebRequest webRequest, boolean includeStackTrace) {
+                Map<String, Object> errorAttributes = super.getErrorAttributes(webRequest,includeStackTrace );
+                errorAttributes.put("company", "mycompany");
+                // 我们的异常处理器携带的数据
+                Map<String, Object> ext = (Map<String, Object>) webRequest.getAttribute("ext", 0);
+                errorAttributes.put("ext", ext);
+                return errorAttributes;
+            }
+        }
 
+        ```
+        - 修改自定义异常处理器：
+        ```java
+        // 方法二：在前面的基础上实现自适应
+            @ExceptionHandler(UserNotExistException.class)
+            public String handleException(Exception e, HttpServletRequest request){
+                // 响应自己的JSON数据
+                Map<String, Object> map = new HashMap<>();
+                // 传入自定义的错误状态码，否则一定是200
+                request.setAttribute("javax.servlet.error.status_code", 404);
+                map.put("code", "user.notexist");
+                map.put("message", e.getMessage());
+                request.setAttribute("ext", map);
+                return "forward:/error"; //转发到/error
+            }
+        ```
+
+        
 
 
 
