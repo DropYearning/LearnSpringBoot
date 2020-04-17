@@ -885,13 +885,44 @@ public class ThymeleafProperties {
     </dependency>
     ```
 ### 7.4 替换Servlet容器背后的自动配置原理
+- `EmbeddedServletContainerAutoConfiguration`类:嵌入式的Servlet容器自动配置
+    - `EmbeddedServletContainerFactory`:嵌入式Servlet容器工厂）
+        - ![GD9Vnzt](https://i.imgur.com/GD9Vnzt.png)
+    - `EmbeddedServletContainer`：嵌入式的Servlet容器
+    
+- 步骤：
+    - 1、SpringBoot根据导入的依赖情况，给容器中添加相应的EmbeddedServletContainerFactory【例如，TomcatEmbeddedServletContainerFactory】
+    - 2、容器中某个组件要创建对象就会惊动后置处理器EmbeddedServletContainerCustomizerBeanPostProcessor；只要是嵌入式的Servlet容器工厂，后置处理器就工作；
+    - 3、后置处理器从容器中获取所有的**EmbeddedServletContainerCustomizer**，调用定制器的定制方法
 
+### 7.5 嵌入式Servlet容器启动原理
+- SpringBoot什么时候创建嵌入式的Servlet容器工厂？什么时候获取嵌入式的Servlet容器并启动Tomcat？
+- 问题一：SpringBoot什么时候创建嵌入式的Servlet容器工厂？
+    - 1）、SpringBoot应用启动运行run方法
+    - 2）、refreshContext(context);SpringBoot刷新IOC容器【创建IOC容器对象，并初始化容器，创建容器中的每一个组件】；如果是web应用就创建**AnnotationConfigEmbeddedWebApplicationContext**，否则就创建**AnnotationConfigApplicationContext**
+    - 3）、refresh(context);**刷新刚才创建好的ioc容器；**
+    - 4）、  onRefresh(); web的ioc容器重写了onRefresh方法
+    - 5）、webioc容器会创建嵌入式的Servlet容器；**createEmbeddedServletContainer**();
+    - 6）、**获取嵌入式的Servlet容器工厂：**EmbeddedServletContainerFactory containerFactory = getEmbeddedServletContainerFactory();从ioc容器中获取EmbeddedServletContainerFactory 组件；**TomcatEmbeddedServletContainerFactory**创建对象，后置处理器一看是这个对象，就获取所有的定制器来先定制Servlet容器的相关配置；
+    - 7）、**使用容器工厂获取嵌入式的Servlet容器**：this.embeddedServletContainer = containerFactory.getEmbeddedServletContainer(getSelfInitializer());
+    - 8）、嵌入式的Servlet容器创建对象并启动Servlet容器；**先启动嵌入式的Servlet容器，再将ioc容器中剩下没有创建出的对象获取出来**
+    - **关键：IOC容器启动创建嵌入式的Servlet容器**
 
-  
+## 8 使用外置的Servlet容器
+- 使用嵌入式Servlet容器的好处：应用打成可执行的`jar`包，简单、便携；缺点：默认不支持JSP、优化定制比较复杂（使用定制器【ServerProperties、自定义EmbeddedServletContainerCustomizer】，自己编写嵌入式Servlet容器的创建工厂）
+    - JAR（Java Archive，Java 归档文件）是与平台无关的文件格式，它允许将许多文件组合成一个压缩文件。通常是开发时要引用通用类，打成jar包便于存放管理。
+- 外置的Servlet容器：外面安装Tomcat等容器；应用使用`war`包的方式打包；
+    - war包是一个可以直接运行的web模块。是做好一个web应用后，通常是网站，打成包部署到容器中。
+- [jar包和war包的介绍和区别 - 简书](https://www.jianshu.com/p/3b5c45e8e5bd)
+- 
+
+### 8.1 使用外置的Servlet容器的步骤
+
 
 ## 参考资料
+- [SpringBoot_权威教程_spring boot_springboot核心篇+springboot整合篇-_雷丰阳_尚硅谷_哔哩哔哩 (゜-゜)つロ 干杯~-bilibili](https://www.bilibili.com/video/BV1Et411Y7tQ?p=1)
 - [Web容器、Servlet容器、Spring容器、SpringMVC容器之间的关系 - Jie~ - 博客园](https://www.cnblogs.com/jieerma666/p/10805966.html)
-
+- [jar包和war包的介绍和区别 - 简书](https://www.jianshu.com/p/3b5c45e8e5bd)
 
 
 
