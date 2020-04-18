@@ -1,149 +1,140 @@
-#  LearnSpringBoot-07-SpringBoot-数据访问-JDBC
+#  LearnSpringBoot-07-SpringBoot-数据访问-整合Mybatis
 
 [SpringBoot_权威教程__哔哩哔哩 (゜-゜)つロ 干杯~-bilibili](https://www.bilibili.com/video/BV1Et411Y7tQ?p=4)
 
-## 1 JDBC
-    ```xml
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-jdbc</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>mysql</groupId>
-        <artifactId>mysql-connector-java</artifactId>
-        <scope>runtime</scope>
-    </dependency>
-    ```
-### 1.1 JDBC自动配置原理（SpringBoot 1.x版本）
-- 在`org.springframework.boot.autoconfigure.jdbc`包下
-- 1、参考DataSourceConfiguration，根据配置创建数据源，**默认使用Tomcat连接池（SpringBoot 1.x版本）**；可以使用spring.datasource.type指定自定义的数据源类型；
-- 2、SpringBoot默认可以支持：org.apache.tomcat.jdbc.pool.DataSource、**HikariDataSource（SpringBoot 2.x 版本默认）**、BasicDataSource
-- 3、自定义数据源DataSource类型
+## 1 整合Mybatis
+- 1、引入Mybatis依赖
+- 2、引入Druid方法同上一次
+- 3、添加相关的数据表和相关Java Bean
+
+## 2 配置Mybatis(注解法，例如Department表的操作)
+- 4、编写Mapper SQL映射类：
     ```java
-    /**
-     * Generic DataSource configuration.
-     */
-    @ConditionalOnMissingBean(DataSource.class)
-    @ConditionalOnProperty(name = "spring.datasource.type")
-    static class Generic {
-    
-       @Bean
-       public DataSource dataSource(DataSourceProperties properties) {
-           //使用DataSourceBuilder创建数据源，利用反射创建响应type的数据源，并且绑定相关属性
-          return properties.initializeDataSourceBuilder().build();
+       @Mapper // 指定这是一个操作数据库的Mapper，只需是接口即可
+       public interface DepartmentMapper {
+       
+           @Select("select * from department where id = #{id}")
+           public Department getDeptById(Integer id);
+       
+           @Delete("delete from department where id=#{id}")
+           public int deleteDeptById(Integer id);
+       
+           @Options(useGeneratedKeys = true, keyProperty = "id") // 配置使用自动生成主键
+           @Insert("insert into department(department_name) values(#{departmentName}) ")
+           public int insertDept(Department department);
+       
+           @Update("update department set department_name=#{departmentName} where id=#{id}")
+           public int updateDept(Department department);
        }
+    ```
+- 5、编写Controller处理url请求：
+    ```java
+    @RestController
+    public class DeptController {   
+        @Autowired
+        DepartmentMapper departmentMapper; // DepartmentMapper虽然是一个接口，但是在Mybatis下这样使用是可以的
     
+        @GetMapping("/dept/{id}")
+        public Department getDepartment(@PathVariable("id") Integer id){
+            return departmentMapper.getDeptById(id);
+        }
+    
+        @GetMapping("/dept")
+        public Department insertDepartment(Department department){
+            departmentMapper.insertDept(department);
+            return department;
+        }
     }
     ```
-- 4、**DataSourceInitializer（实际上是一个ApplicationListener）**；
-    - 作用：
-        ​- 1）、runSchemaScripts():运行建表语句；
-        - 2）、runDataScripts():运行插入数据的sql语句；
-    - 在初始化时运行SQL文件，只需要将文件命名为：schema.sql(建表)、data.sql(插入数据)并放在类路径下即可
-    - 也可以在主配置文件中指定启动是要加载的SQL文件：
-        ```yaml
-        spring:
-          datasource:
-            username: root
-            password: 123456
-            url: jdbc:mysql://127.0.0.1:3307/jdbc?serverTimezone=UTC
-            driver-class-name: com.mysql.cj.jdbc.Driver
-            initialization-mode: always
-            schema:
-              - classpath:department.sql
-              - classpath:employee.sql
-        ```
-    > SpringBoot2.x需要在主配置文件中设置：initialization-mode: always
-- 5、操作数据库：自动配置了 JdbcTemplate 操作数据库
-            
-## 2 整合Druid数据源和相关监控
-- **Druid**是一个关系型数据库连接池，它是阿里巴巴的一个开源项目。Druid支持所有JDBC兼容数据库，包括了Oracle、MySQL、PostgreSQL、SQL Server、H2等。Druid在监控、可扩展性、稳定性和性能方面具有明显的优势。通过Druid提供的监控功能，可以实时观察数据库连接池和SQL查询的工作情况。使用Druid连接池在一定程度上可以提高数据访问效率。
-- 1、引入Druid的Maven依赖（需要log4j支持）
-- 2、编写配置类用于导入application.properties中的配置项目和监控设置
+- 6、可以在容器中注入一个Mybatis配置类来实现例如兼容驼峰命名等设置：
     ```java
-   // 导入druid数据源的配置类
-   @Configuration
-   public class DruidConfig {  
-       @Bean
-       @ConfigurationProperties(prefix = "spring.datasource")
-       public DataSource druid(){
-           return new DruidDataSource();
-       }  
-       // 配置Druid监控
-       // 1、配置一个管理后台的Servlet
-       @Bean
-       public ServletRegistrationBean statViewServlet(){
-           ServletRegistrationBean servletRegistrationBean = new ServletRegistrationBean(new StatViewServlet(), "/druid/*"); // 注意druid的映射路径/druid/*
-           Map<String, String> initParams = new HashMap<>(); // 配置管理druid后台的Servlet
-           initParams.put("loginUsername", "admin");
-           initParams.put("loginPassword", "123456");
-           initParams.put("allow", ""); // 默认允许所有
-           servletRegistrationBean.setInitParameters(initParams);
-           return servletRegistrationBean;
-       }
-       // 2、配置一个监控的filter
-       @Bean
-       public FilterRegistrationBean webStatFilter(){
-           FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
-           filterRegistrationBean.setFilter(new WebStatFilter());
-           Map<String, String> initParams = new HashMap<>();
-           initParams.put("exclusions", "*.js, *.css, /druid/*"); // 设置拦截器的排除项
-           filterRegistrationBean.setInitParameters(initParams);
-           filterRegistrationBean.setUrlPatterns(Arrays.asList("/*"));
-           return filterRegistrationBean;
-       }
-   }
+    @org.springframework.context.annotation.Configuration
+    public class MyBatisConfig {
+    @Bean
+    public ConfigurationCustomizer configurationCustomizer(){
+        return new ConfigurationCustomizer() {
+            @Override
+            public void customize(Configuration configuration) {
+                configuration.setMapUnderscoreToCamelCase(true);
+                }
+            };
+        }
+    }
     ```
-- 3、在application.properties配置druid
-    ```properties
-    spring:
-      datasource:
-        username: root
-        password: 123456
-        url: jdbc:mysql://127.0.0.1:3307/jdbc?serverTimezone=UTC
-        driver-class-name: com.mysql.cj.jdbc.Driver
-        initialization-mode: always # 设置SpringBoot 2.x启动时加载SQL必须打开此项
-        type: com.alibaba.druid.pool.DruidDataSource # 切换数据源为druid
-        # 数据源其他配置（黄色表示下面的这些项目并不能自动导入，需要在配置类中引入，见DruidConfig）
-        initialSize: 5
-        minIdle: 5
-        maxActive: 20
-        maxWait: 60000
-        timeBetweenEvictionRunsMillis: 60000
-        minEvictableIdleTimeMillis: 300000
-        validationQuery: SELECT 1 FROM DUAL
-        testWhileIdle: true
-        testOnBorrow: false
-        testOnReturn: false
-        poolPreparedStatements: true
-        #   配置监控统计拦截的filters，去掉后监控界面sql无法统计，'wall'用于防火墙
-        filters: stat,wall,log4j
-        maxPoolPreparedStatementPerConnectionSize: 20
-        useGlobalDataSourceStat: true
-        connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
+- 7、如果Mapper类数量过多，可以在标注有`@SpringBootApplication`的SpringBoot的启动类上标注`@MapperScan`来批量扫描：
+    ```java
+    @SpringBootApplication
+    @MapperScan(value = "com.example.springboot10.mapper")
+    public class Springboot10DataMybatisApplication {
+    
+        public static void main(String[] args) {
+            SpringApplication.run(Springboot10DataMybatisApplication.class, args);
+        }
+    }
     ```
-- 4、在测试类中断点调试看是否引入配置
-    - ![6Gtc8xH](https://i.imgur.com/6Gtc8xH.png)
-    - ![XFOlCCP](https://i.imgur.com/XFOlCCP.png)
-- 5、启动tomcat，进入druid后台
-    - ![5ZhObJQ](https://i.imgur.com/5ZhObJQ.png)
+## 3 配置Mybatis(XML法，例如Employee表的操作)
+- 1、在SpringBoot主配置文件中配置Mybatis的配置文件所在路径:
+    ```yaml
+    mybatis:
+      # Mybatis全局配置文件的路径
+      config-location: classpath:mybatis/mybatis-config.xml
+      mapper-locations: classpath:mybatis/mapper/*.xml # 使用*通配，否则要写成YAML数组形式
+    ```
+- 2、编写全局Mybatis配置XML
+    ```xml
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <!DOCTYPE configuration
+            PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+            "http://mybatis.org/dtd/mybatis-3-config.dtd">
+    <!--Mybatis全局配置文件-->
+    <configuration>
+        <settings>
+            <setting name="mapUnderscoreToCamelCase" value="true"/>
+        </settings>
+    </configuration>
+    ```
+- 3、编写具体的Mapper配置XML
+    ```xml
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <!DOCTYPE mapper
+            PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+            "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    <!--具体的Mapper配置文件-->
+    <mapper namespace="com.example.springboot10.mapper.EmployeeMapper">
+    
+        <select id="getEmpById" resultType="com.example.springboot10.bean.Employee">
+            select * from employee where id = #{id}
+        </select>
+    
+        <select id="insertEmp" >
+            insert into employee(lastName, email, gender, d_id) values(#{lastName}, #{gender},#{email},#{dId})
+        </select>
+    </mapper>
+    ```
+- 4、编写Controller类
+    ```java
+    @RestController
+    public class MyController {
+        @Autowired
+        EmployeeMapper employeeMapper;
+    
+    
+        @GetMapping("emp/{id}")
+        public Employee getEmp(@PathVariable("id") Integer id){
+            return employeeMapper.getEmpById(id);
+        }
+    
+    }
+    
+    ```
+- 5、启动测试
+    - ![ntvLPDZ](https://i.imgur.com/ntvLPDZ.png)
 
 
 
-
-
-## 参考资料
-- [SpringBoot配置JDBC连接MySql数据库的时候遇到了报错：HikariPool-1 - Exception during pool initialization - 还可入梦 - 博客园](https://www.cnblogs.com/stilldream/p/11284187.html)
-- [SpringBoot启动报错：HikariPool-1 - Exception during pool initialization._Java_Charon博客站-CSDN博客](https://blog.csdn.net/qq_34035160/article/details/82841020)
-- [【JAVA】JAVA数据源_Java_xueba8的博客-CSDN博客](https://blog.csdn.net/xueba8/article/details/84107204)
-- [alibaba/druid: 阿里巴巴数据库事业部出品，为监控而生的数据库连接池](https://github.com/alibaba/druid)
-
-
-
-
-
-
-
+## 参考资源
+- [清官谈mysql中utf8和utf8mb4区别 | OurMySQL](http://ourmysql.com/archives/1402)
+- [mybatis – MyBatis 3 | 配置](https://mybatis.org/mybatis-3/zh/configuration.html)
 
 
 
