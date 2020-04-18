@@ -3,6 +3,10 @@
 [SpringBoot_权威教程__哔哩哔哩 (゜-゜)つロ 干杯~-bilibili](https://www.bilibili.com/video/BV1Et411Y7tQ?p=4)
 
 ## 1 启动运行流程
+- ![QBwdgAV2YqiPJEz](https://i.loli.net/2020/04/18/QBwdgAV2YqiPJEz.png)
+- ![rMFhY8fuGPdQ6Lb](https://i.loli.net/2020/04/18/rMFhY8fuGPdQ6Lb.png)
+- ![2ZnkThIVsxDu1Rz](https://i.loli.net/2020/04/18/2ZnkThIVsxDu1Rz.png)
+
 
 ### 1.1 创建SpringApplication对象
 1. 保存主配置类
