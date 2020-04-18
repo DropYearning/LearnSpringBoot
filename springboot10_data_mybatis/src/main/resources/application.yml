@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    username: root
+    password: 123456
+    url: jdbc:mysql://127.0.0.1:3307/jdbc?serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    initialization-mode: always # 设置SpringBoot 2.x启动时加载SQL必须打开此项
+#    schema: # 指定启动时要加载的SQL文件
+#      - classpath:department.sql
+#      - classpath:employee.sql
+    type: com.alibaba.druid.pool.DruidDataSource # 切换数据源为druid
+    # 数据源其他配置（黄色表示下面的这些项目并不能自动导入，需要在配置类中引入，见DruidConfig）
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1 FROM DUAL
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    #   配置监控统计拦截的filters，去掉后监控界面sql无法统计，'wall'用于防火墙
+    filters: stat,wall,log4j
+    maxPoolPreparedStatementPerConnectionSize: 20
+    useGlobalDataSourceStat: true
+    connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
