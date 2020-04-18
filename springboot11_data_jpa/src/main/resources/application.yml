@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    username: root
+    password: 123456
+    url: jdbc:mysql://127.0.0.1:3307/jpa?serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    initialization-mode: always # 设置SpringBoot 2.x启动时加载SQL必须打开此项
+  jpa:
+    hibernate:
+      # 在启动时直接根据实体类更新或者创建数据表
+      ddl-auto: update
+    # 控制台可以显示SQL
+    show-sql: true
+#    schema: # 指定启动时要加载的SQL文件,schema需要填一个list
+#      - classpath:sql/department.sql
+#      - classpath:sql/employee.sql
