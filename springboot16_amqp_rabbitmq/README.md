@@ -252,6 +252,7 @@ public class MyAmqpConfig {
 ## 参考
 - [消息队列之 RabbitMQ - 简书](https://www.jianshu.com/p/79ca08116d57)
 - [消息队列Kafka、RocketMQ、RabbitMQ的优劣势比较 - 知乎](https://zhuanlan.zhihu.com/p/60288391)
+    - ![evH2gAf](https://i.imgur.com/evH2gAf.jpg)
 
 
 
