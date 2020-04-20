@@ -180,13 +180,13 @@
                 empRedisTemplate.opsForValue().set("emp-01", empById);
             }
         ```
-    - 效果：![zgLZmk](https://gitee.com/brtcho/testmarkdown/raw/master/imgs/2020/04/zgLZmk.png)
+    - 效果：![kVdASi9](https://i.imgur.com/kVdASi9.jpg)
 
 ### 2.3 使用redis替代SpringBoot默认的缓存组件
 - 1）引入redis的starter，容器中保存的是 RedisCacheManager；
 - 2）RedisCacheManager 帮我们创建 RedisCache 来作为缓存组件；RedisCache通过操作redis缓存数据的
 - 3）默认保存数据 k-v 都是Object；默认使用JDK的序列化保存的
-        - ![AingF2](https://gitee.com/brtcho/testmarkdown/raw/master/imgs/2020/04/AingF2.png)
+        - ![EgHXP6r](https://i.imgur.com/EgHXP6r.jpg)
          * 1、引入了redis的starter，cacheManager变为 RedisCacheManager；
          * 2、默认创建的 RedisCacheManager 操作redis的时候使用的是 RedisTemplate<Object, Object>
          * 3、RedisTemplate<Object, Object> 默认使用jdk自带的序列化机制
@@ -230,7 +230,7 @@
         }
     }
     ```
-- 5) 测试缓存效果：![inLGui](https://gitee.com/brtcho/testmarkdown/raw/master/imgs/2020/04/inLGui.png)
+- 5) 测试缓存效果：![NKhSsQH](https://i.imgur.com/NKhSsQH.jpg)
 
 ### 2.4 解决多个实体缓存redis后不能反序列化的问题(适用于 SpringBoot 1.x)
 - 当为DeptService也添加缓存功能后, 还是使用上面的CacheManager和empRedisTemplate操作redis：
@@ -249,7 +249,7 @@
     }
     ```
 - 缓存的数据虽然能以JSON存入redis，但是第二次从缓存中查询就无法反序列化为Department对象
-    - ![QwZ18C](https://gitee.com/brtcho/testmarkdown/raw/master/imgs/2020/04/QwZ18C.png)
+    - ![9baFRic](https://i.imgur.com/9baFRic.jpg)
 - 如何解决？ Dept和Emp各自使用自己的RedisTemplate和CacheManager。
     - `@Cacheable(cacheNames = "dept", cacheManager = "deptCacheManager")`
     - `@CacheConfig(cacheNames = "emp", cacheManager = "employeeCacheManager")`
