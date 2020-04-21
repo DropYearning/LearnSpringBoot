@@ -1,4 +1,4 @@
-#  LearnSpringBoot-SpringBoot整合-SpringBoot与分布式
+#  LearnSpringBoot-SpringBoot整合Dubbo和ZooKeeper实现简单分布式应用
 
 [SpringBoot_权威教程__哔哩哔哩 (゜-゜)つロ 干杯~-bilibili](https://www.bilibili.com/video/BV1Et411Y7tQ?p=4)
 
@@ -209,8 +209,9 @@
     ```
 
 - 3、**在消费者模块中放一份一模一样的TicketService代码，并且全类名路径要相同，并且只需要拷贝接口即可**
-    - ![NUyhbUD](https://i.imgur.com/NUyhbUD.png)
-
+    
+- ![NUyhbUD](https://i.imgur.com/NUyhbUD.png)
+    
 - 4、在UserService下调用TicketService:
 
     ```java
@@ -249,12 +250,10 @@
 
     - 消费者和生产者的主运行类上都加上`@EnableDubbo`
     - Log4j的错误是因为jar包的重复，可以参考[解决记录之十二——分布式Dubbo与Zookeeper以及SLF4J: Class path contains multiple SLF4J bindings等错误_Java_江南T雨-CSDN博客](https://blog.csdn.net/Lswx2006/article/details/89950809)。 由于生产者和消费者两侧都需要引入相似的包，因此该问题需要解决2次
-    - 不要引入Maven Repository: com.github.sgroschupf » zkclient](https://mvnrepository.com/artifact/com.github.sgroschupf/zkclient)，应该引入更新的[Maven Repository: com.101tec » zkclient](https://mvnrepository.com/artifact/com.101tec/zkclient)
+    - 不要引入Maven Repository: com.github.sgroschupf » zkclient](https://mvnrepository.com/artifact/com.github.sgroschupf/zkclient)， 应该引入更新的[Maven Repository: com.101tec » zkclient](https://mvnrepository.com/artifact/com.101tec/zkclient)
     - 善用IDEA的Maven diagram 发现依赖引用的问题！
 
 
-
-## 
 
 
 
